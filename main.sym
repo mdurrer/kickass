@@ -1,0 +1,4 @@
+.label setup_multiplex=$810
+.label setup_irq=$810
+.label irq=$840
+.label start=$810

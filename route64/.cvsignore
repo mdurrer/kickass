@@ -1,0 +1,6 @@
+build.properties
+logging.properties
+dist
+web
+.settings
+bin

@@ -1,0 +1,9 @@
+.label chofs=$c060
+.label irq=$c040
+.label l2=$c043
+.label ghost=$c037
+.label l1=$c046
+.label skip=$c072
+.label dir=$c03e
+.label offset=$c03f
+.label up=$c073

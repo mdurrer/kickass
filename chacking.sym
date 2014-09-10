@@ -1,0 +1,9 @@
+.label chofs=$c04d
+.label irq=$c02b
+.label l2=$c02e
+.label l1=$c031
+.label skip=$c05f
+.label dir=$c04c
+.label init=$c000
+.label ofset=$c04b
+.label up=$c060

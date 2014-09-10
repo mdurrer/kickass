@@ -1,0 +1,4 @@
+.label irq=$1055
+.label init=$1000
+.label loop2=$1038
+.label loop1=$1062
