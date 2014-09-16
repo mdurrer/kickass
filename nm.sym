@@ -1,0 +1,3 @@
+.label irq=$1033
+.label initsprites=$1032
+.label initraster=$1007
