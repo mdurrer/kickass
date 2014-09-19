@@ -3,29 +3,31 @@
 .fill 64,255
 .var MINSPRY = 30
 .var MAXSPRY = 250
-.var MAXSPR = 32
-.var NUMSPR = 16
-.var TEMP1 = $02
-.var TEMP2 = $03
-.var TEMP3 = $04
-.var SORTSPRSTART = $06
-.var SORTSPREND = $07
-.var SPRORDER = $40+MAXSPR+1
+.var MAXSPR = 24
+.var NUMSPR = 24
+.var IRQ1LINE = $10
+.var temp1 = $02
+.var temp2 = $03
+.var temp3 = $04
+.var sprupdateflag = $05
+.var sortsprstart = $06
+.var sortsprend = $07
+.var sprorder = $40+MAXSPR+1
 .var DEBUG = true
-.var SPRUPDFLG = $05
+
 .var SCREENRAM = $0400
 .pc = $c000
-SPRXLOW:
+sprxl:
 .fill MAXSPR,0
-SPRXHI:
-.fill MAXSPR,0
-SPRY:
-.fill MAXSPR,0
-SPRC:
-.fill MAXSPR,1
-SPRF:
+sprxh:
 .fill MAXSPR,0
 
+sprf:
+.fill MAXSPR,0
+sprc:
+.fill MAXSPR,1
+.var spry = $40
+.var screen1 = $0400
 sortsprx:
 .fill MAXSPR*2,0
 sortspry:
@@ -34,7 +36,7 @@ sortsprc:
 .fill MAXSPR*2,0
 sortsprf:
 .fill MAXSPR*2,0
-sortsprd010l:
+sortsprd010:
 .fill MAXSPR*2,0
 sprirqline:
 .fill MAXSPR*2,0
@@ -78,15 +80,62 @@ sprirqjumptblhi:
                 .byte >irq2_spr6
                 .byte >irq2_spr7
 .pc = $1000
-ldx #MAXSPR-1
-initloops:
-sta $e000,x
-sta SPRXLOW,x
-
 
 jsr initsprites
 jsr initraster
-rts
+
+ldx #NUMSPR-1
+initloop:
+sta $e000,x
+sta sprxl,xrts
+lda $e018,x
+and #$01
+sta sprxh,x
+lda $e030,x
+lda #$3f
+sta sprf,x
+txa
+and #$0f
+cmp #$06
+bne colorok
+
+lda #$05
+colorok:
+sta sprc,x
+dex
+bpl initloop
+
+// Main Loop!
+
+mainloop:
+ldx #NUMSPR-1
+moveloop:
+lda #$e048,x
+and #$03
+sec
+adc sprxl,x
+sta sprxl,x
+lda sprxh,x
+adc #$00
+sta sprxh,x
+beq moveloop_xnotover
+lda sprxl,x
+bpl moveloop_xnotover
+sec
+sbc #$80
+sta sprxl,x
+dec sprxh,x
+
+moveloop_xnotover
+lda $e060,x
+and #$01
+sec
+adc spry,x
+sta spry,x
+dex 
+bpl moveloop
+jsr sortsprites
+jmp mainloop
 
 initraster:
 cld
@@ -116,8 +165,8 @@ initsprites:
 // RTS nicht vergessen!
 
 lda #$00
-sta SPRUPDFLG
-sta SORTSPRSTART
+sta sprupdateflag
+sta sortsprstart
 ldx #MAXSPR
 is_orderlist:
 	txa
@@ -135,11 +184,11 @@ bne sortsprites
 inc $d020
 }
 
-lda SORTSPRSTART
+lda sortsprstart
 eor #MAXSPR
-sta SORTSPRSTART
+sta sortsprstart
 ldx #$00
-sta TEMP3
+sta temp3
 
 rts
 sspr_loop1:
@@ -147,10 +196,10 @@ ldy sprorder,x
 cmp spry,y
 beq sspr_noswap2
 bcc sspr_noswap1
-stx TEMP1
-sty TEMP2
+stx temp1
+sty temp2
 lda spry,y
-ldy SPRORDER-1,x
+ldy  sprorder-1,x
 sty sprorder,x
 dex
 beq sspr_swapdone1
@@ -163,9 +212,9 @@ bcs sspr_swapdone1
 dex
 bne sspr_swap1
 sspr_swapdone1:
-ldy TEMP2
+ldy temp2
 sty sprorder,x
-ldx TEMP1
+ldx temp1
 ldy sprorder,x
 
 sspr_noswap1:   
@@ -186,8 +235,8 @@ sspr_findfirst:
                 bne sspr_findfirst
 sspr_firstfound:
 		txa
-                adc #<sprorder                  //Add one more, C=1 becomes 0
-                sbc sortsprstart                //subtract one more to cancel out
+                adc #<sprorder                  //Add 1m C=1 becomes 0
+                sbc sortsprstart                //subtract one  to cancel out
                 sta sspr_copyloop1+1
                 ldy sortsprstart
                 tya
@@ -203,11 +252,11 @@ sspr_copyloop1:
                 cmp #MAXSPRY
                 bcs sspr_copyloop1done
                 sta sortspry,y
-                lda SPRC,x                      //Copy sprite's properties to sorted table
+                lda sprc,x                      //Copy sprite's properties to sorted table
                 sta sortsprc,y
                 lda sprf,x
                 sta sortsprf,y
-                lda 	SPRXLOW,x
+                lda 	sprxl,x
                 sta sortsprx,y
                 lda sprxh,x                     //Handle sprite X coordinate MSB
                 beq sspr_copyloop1msblow
@@ -256,7 +305,7 @@ sspr_copyloop2:
                 sta sortsprc,y
                 lda sprf,x
                 sta sortsprf,y
-                lda SPRXLOW,x
+                lda sprxl,x
                 sta sortsprx,y
                 lda sprxh,x
                 beq sspr_copyloop2msblow
@@ -311,8 +360,8 @@ sspr_irqdone:
 sspr_finalendmark:
                 lda #$00                        //Make final endmark
                 sta sprirqline-1,y
-sspr_alldone:   sty sortsprend                  //Index of last sorted sprite + 1
-                inc sprupdateflag               //Increment the update flag which will be read by IRQ's
+sspr_alldone:   sty sortsprend                  //Index of last sorted sprite +1
+                inc sprupdateflag               
                 .if (DEBUG)
 		{
                 dec $d020
@@ -455,7 +504,7 @@ dec $d020
 		ldy sprirqline,x
 		beq irq2_alldone
 		inx
-		stx irq2_spr2index+1
+		stx irq2_sprindex+1
 		txa
 		and #$07
 		tax
@@ -466,7 +515,6 @@ dec $d020
 		tya
 		sta $d012
 		sec
-		sbc
 		sbc #$3
 		cmp $d012
 		bcc irq2_direct
