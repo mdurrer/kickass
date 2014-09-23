@@ -24,19 +24,20 @@ lda #$1b
 sta $d011 
 lda #$00
 sta $d012
-
 cli
+
 ghost: 
 rol $3fff
 jmp ghost
-rts
+//rts
 dir:
 .byte 0
 offset:
 .byte from
 irq:
 ldx offset
-l2: ldy $d012
+l2: 
+ldy $d012
 l1:
 cpy $d012
 beq l1
@@ -44,7 +45,7 @@ dey
 tya
 and #$07
 ora #$10
-sta $d011
+ sta $d011
 dex
 bne l2
 inc $d019
@@ -68,4 +69,31 @@ cmp #from
 bne skip
 lda #$00
 sta dir
+
+mainloop:
+//jsr joystickcheck
+ldx #$00
+licht:
+inc $d021
+
+dec $d021
+dex
+bne licht
+jmp mainloop
+
+
+joystickcheck:
+lda $dc00
+and #$5f // $5F = %0101111, Bit 0-4 = Joystick controls, high = not activated, low = activated (fire). Left / Right, Up / Down, Fire (in reverse order for the first lowest bits)
+sta $dc00
+
+lda  $dc00
+and #%01111111 
+sta $dc00
+cmp  #127
+beq nobuttons
+rts
+nobuttons:
+inc $d020
+jmp *
 rts
