@@ -108,6 +108,11 @@ sta $d012
 lda #$04
 sta $03
 
+init_fadeout:
+lda #$fa
+sta $05
+lda #$01
+sta $06
 	// Sprites in Lower and Upper Border
 	lda #%111111111
 	sta $d015
@@ -157,14 +162,10 @@ sprcolors:
 	lda #100
 	ldx #$08
 sprdata:
-	sta $07f8,x
-	dex
-	bne sprdata
 	lda #$ff
 	sta $d01d
+	sta $d017
 	cli
-lda #$00
-sta $0400
 jmp *
 irq1:
     pha
@@ -197,11 +198,6 @@ irq2:
     lda $d011
     and #%11110111
     sta $d011
- 	inc $d021
-    nop
-    nop
-    nop
-    dec $d021
     lda #$fc
     sta $d012
     lda #<irq3
@@ -211,8 +207,7 @@ irq2:
     asl $d019
     lda #$ff
     sta $3fff
-
-
+    jsr fadeout
     pla
     tay
     pla
@@ -251,3 +246,43 @@ irq3:
     tax
     pla
     rti
+
+fadeout:
+lda $06
+cmp #$01
+bne down
+up:
+dec $05
+lda $05
+sta $d001
+sta $d003
+sta $d005
+sta $d007
+sta $d009
+sta $d00b
+sta $d00d
+sta $d00f
+cmp #$30
+beq go_down
+rts
+go_down:
+lda #$00
+sta $06
+down:
+inc $05
+lda $05
+sta $d001
+sta $d003
+sta $d005
+sta $d007
+sta $d009
+sta $d00b
+sta $d00d
+sta $d00f
+cmp #$fa
+beq go_up
+rts
+go_up:
+lda #$01
+sta $06
+rts
