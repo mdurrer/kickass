@@ -73,6 +73,12 @@ WedgeIRQ:
 
     // Stable code    
  }
+ 
+ 
+.pc = $1900
+.var clrsprite = LoadBinary("clearsprite.prg")
+clearsprite:
+.fill clrsprite.getSize(), clrsprite.get(i)
 .pc = $0801
 
 :BasicUpstart2(start)
@@ -80,6 +86,13 @@ WedgeIRQ:
 start:
 
 sei
+lda #$35
+sta $01
+lda #$7f
+sta $dc0d
+sta $dd0d
+lda $dd0d
+lda $dc0d
 lda #<irq1
 sta $fffe
 lda #>irq1
@@ -90,8 +103,68 @@ asl $d019
 lda $d011
 and #$7f
 sta $d011
+lda #$50
+sta $d012
+lda #$04
+sta $03
 
-cli
+	// Sprites in Lower and Upper Border
+	lda #%111111111
+	sta $d015
+	lda #%11000000
+	sta $d010
+setsprycoord:
+	lda #$fa
+	sta $d001
+	sta $d003
+	sta $d005
+	sta $d007
+	sta $d009
+	sta $d00b
+	sta $d00d
+	sta $d00f
+setsprxcoord:
+	clc
+	lda #24
+	sta $d000
+	adc #48
+	sta $d002
+	adc #48
+	sta $d004
+	adc #48
+	sta $d006
+	adc #48
+	sta $d008
+	adc #30
+	sta $d00a
+	lda #$00
+	sta $d00c
+	adc #48
+	sta $d00e
+	ldx #$08
+	
+sprcolors:
+	
+	lda #$0e
+	sta $d027
+	sta $d028
+	sta $d029
+	sta $d02a
+	sta $d02b
+	sta $d02c
+	sta $d02d
+	sta $d02e
+	lda #100
+	ldx #$08
+sprdata:
+	sta $07f8,x
+	dex
+	bne sprdata
+	lda #$ff
+	sta $d01d
+	cli
+lda #$00
+sta $0400
 jmp *
 irq1:
     pha
@@ -100,20 +173,14 @@ irq1:
     tya
     pha
     :STABILIZE()
-    inc $d021
-    nop
-    nop
-    nop
-    nop
-    dec $d021
+
     lda #<irq2
     sta $fffe
     lda #>irq2
     sta $ffff
-
     lda #$01
     sta $d019
-	lda #$50
+	lda #$f8
 	sta $d012
     pla
     tay
@@ -127,13 +194,57 @@ irq2:
     pha
     tya
     pha
-    lda #$4f
+    lda $d011
+    and #%11110111
+    sta $d011
+ 	inc $d021
+    nop
+    nop
+    nop
+    dec $d021
+    lda #$fc
+    sta $d012
+    lda #<irq3
+    sta $fffe
+    lda #>irq3
+    sta $ffff
+    asl $d019
+    lda #$ff
+    sta $3fff
+
+
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti
+
+irq3:
+    pha
+    txa
+    pha
+    tya
+    pha
+    inc $d020
+    nop
+    nop
+    nop
+    dec $d020
+	lda $d011
+	ora #$08
+	sta $d011
+    lda #$50
     sta $d012
     lda #<irq1
     sta $fffe
     lda #>irq1
     sta $ffff
+    inc $3fff
+ 
     asl $d019
+	
+    
     pla
     tay
     pla
